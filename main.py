@@ -14,7 +14,7 @@ class MyDelegate(btle.DefaultDelegate):
         self.name = name
     
     def handleNotification(self, cHandle, data):
-        if self.counter == 50:
+        if self.counter == 25:
             
             db.update_heart_rate(self.name, (str(data[3])))
             
