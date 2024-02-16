@@ -1,7 +1,7 @@
 from bluepy import btle
 import traceback
 
-import db_module_testing as db
+import db_operations as db
 
 
 SETUP_DATA = b"\x01\00" #bytes sent to pulse oximeter handle to turn on notifications
