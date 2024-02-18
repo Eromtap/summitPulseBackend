@@ -5,23 +5,39 @@ import db_operations as db
 
 
 SETUP_DATA = b"\x01\00" #bytes sent to pulse oximeter handle to turn on notifications
-
+DEFAULT_PULSE = '127' # Default pulse sent by sensors when connecting. We need to remove this unless it's the actual pulse
+CONNECTING = '143'  # This value is sent in the first byte of data whenever connecting. Except sometimes, hence the logic of 'last flag' below
+                    # This looks for the last flag. Someties the first byte value drops one cycle before the pulse is read. Silly Chinese crap
 
 class MyDelegate(btle.DefaultDelegate):
     def __init__(self, name):
         btle.DefaultDelegate.__init__(self)
         self.counter = 0 ## counter to slow down output. 
         self.name = name
+        self.last_pulse = ''
+        self.last_flag = ''
     
     def handleNotification(self, cHandle, data):
-        if self.counter == 25:
-            
-            db.update_heart_rate(self.name, (str(data[3])))
+        if self.counter == 50:
+            pulse_data = str(data[3])
+            connecting_flag = str(data[0])
+            if pulse_data == DEFAULT_PULSE and connecting_flag == CONNECTING:
+                self.last_pulse = pulse_data
+                self.last_flag = connecting_flag
+                db.show_connecting(self.name)
+            else:
+                if pulse_data == DEFAULT_PULSE and self.last_flag == CONNECTING:
+                    db.show_connecting(self.name)
+                    self.last_pulse = pulse_data
+                    self.last_flag = connecting_flag
+                else:
+                    db.update_heart_rate(self.name, pulse_data)
             
             # Printing heart rates to console to make sure backend is working
             # 3rd index in data object is the heart rate.
-            print(f"{self.name}: {data[3]}     ", end='\r')
-            print(end="\x1b[2K")
+            print(f"{self.name}: {pulse_data}:{connecting_flag}     ")
+#             , end='\r'
+#             print(end="\x1b[2K")
             self.counter = 0
         else:
             self.counter += 1
@@ -33,7 +49,7 @@ def main():
         db.show_connecting()
         
         # Initialisation for pulse oximeter 1 -------
-
+        
         pulse1 = btle.Peripheral("00:A0:50:60:7C:4F") #### Pulse oximeter #1
         pulse1.setDelegate( MyDelegate('pulse1') )
 
@@ -44,7 +60,7 @@ def main():
         pulse1.writeCharacteristic(ch1.valHandle+1, SETUP_DATA, withResponse=True)
 
 
-        # Initialisation for pulse oximeter 2 -------
+    # Initialisation for pulse oximeter 2 -------
 
         pulse2 = btle.Peripheral("00:A0:50:C8:CB:3A") #### Pulse oximeter #2
         pulse2.setDelegate( MyDelegate('pulse2') )
@@ -56,19 +72,27 @@ def main():
         setup_data = b"\x01\00"
         pulse2.writeCharacteristic(ch1.valHandle+1, SETUP_DATA, withResponse=True)
 
+        
 
         # Main loop --------
 
         while True:
+
             if pulse1.waitForNotifications(2.0) and pulse2.waitForNotifications(2.0):
                 # handleNotification() was called for pulse1 and pulse2. Iterates counter and outputs when counter limit met
                 continue
-            
+            else:
+                raise Exception
             
     except Exception as error:
         db.show_connecting()
         traceback.print_exc()
         print("Waiting for connection...")
+        
+        if 'pulse1' in locals():
+            pulse1.disconnect()
+        if 'pulse2' in locals():
+            pulse2.disconnect()
         main()
 
 
@@ -76,6 +100,8 @@ if __name__ == '__main__':
     main()
     
     
+
+
 
 
 
