@@ -11,10 +11,15 @@ CONNECT = psycopg2.connect(
     )
 
 
-# Store 'connecting' in both pulse columns when waitiing for connection
-def show_connecting():
+# Store 'connecting' in appropriate pulse columns when waitiing for connection
+def show_connecting(sensor='all'):
     cur = CONNECT.cursor()
-    cur.execute('''UPDATE heart_rates SET pulse1 = 'Connecting', pulse2 = 'Connecting';''')
+    if sensor == 'pulse1':
+        cur.execute('''UPDATE heart_rates SET pulse1 = 'Connecting';''')
+    elif sensor == 'pulse2':
+        cur.execute('''UPDATE heart_rates SET pulse2 = 'Connecting';''')
+    else:
+        cur.execute('''UPDATE heart_rates SET pulse1 = 'Connecting', pulse2 = 'Connecting';''')        
     CONNECT.commit()
     
     
@@ -25,5 +30,7 @@ def update_heart_rate(name, heart_rate):
         cur.execute(''' UPDATE heart_rates set pulse1 = %s;''', (heart_rate,))
     if name == 'pulse2':
         cur.execute(''' UPDATE heart_rates set pulse2 = %s;''', (heart_rate,))       
-    CONNECT.commit()    
+    CONNECT.commit()
+    
+    
 
