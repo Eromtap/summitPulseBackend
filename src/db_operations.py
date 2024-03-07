@@ -1,13 +1,16 @@
 import psycopg2
+import yaml
 
+with open('config.yaml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
 # Module to handle database operations
 
 CONNECT = psycopg2.connect(
-    user = 'postgres',
-    password = 'booger123',
-    host = '34.171.140.16',
-    port = 5432,
-    database = 'summito2'
+    user = config['db_creds']['user'],
+    password = config['db_creds']['password'],
+    host = config['db_creds']['host'],
+    port = config['db_creds']['port'],
+    database = config['db_creds']['database']
     )
 
 
